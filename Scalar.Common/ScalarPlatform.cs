@@ -114,6 +114,38 @@ namespace Scalar.Common
             PhysicalFileSystem fileSystem,
             ITracer tracer);
 
+        public bool TryCreateCredentialStore(ITracer tracer, PhysicalFileSystem fileSystem, out ICredentialStore credentialStore, out string errorMessage)
+        {
+            credentialStore = null;
+
+            string gitBinPath = ScalarPlatform.Instance.GitInstallation.GetInstalledGitBinPath();
+            if (!string.IsNullOrEmpty(gitBinPath))
+            {
+                // Use the Git process for interacting with the configured credential helper
+                credentialStore = new GitProcess(gitBinPath, workingDirectoryRoot: null);
+                tracer.RelatedInfo("Using installed Git process for management");
+            }
+            else
+            {
+                // Unable to locate a Git installation on the system, instead use GCM Core directly if it has been bundled
+                string externalBinDir = ProcessHelper.GetBundledBinariesLocation();
+                string gcmToolFileName = ScalarConstants.BundledBinaries.GcmFileName +
+                                         ScalarPlatform.Instance.Constants.ExecutableExtension;
+                string gcmToolFilePath = Path.Combine(externalBinDir, ScalarConstants.BundledBinaries.GcmDirectoryName, gcmToolFileName);
+                if (!fileSystem.FileExists(gcmToolFilePath))
+                {
+                    errorMessage = $"{nameof(this.TryCreateCredentialStore)}: Unable to locate Git installation or bundled GCM Core. Ensure Git is installed and try again.";
+                    return false;
+                }
+
+                credentialStore = new GitCredentialManagerProcess(gcmToolFilePath);
+                tracer.RelatedInfo("Using bundled GCM process for credential management");
+            }
+
+            errorMessage = null;
+            return true;
+        }
+
         public bool TryGetNormalizedPathRoot(string path, out string pathRoot, out string errorMessage)
         {
             pathRoot = null;
