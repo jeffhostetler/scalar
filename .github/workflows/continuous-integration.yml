@@ -15,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-16.04, ubuntu-18.04, ubuntu-20.04, windows-2019, macos-10.15]
-        watchman: [false, true]
+        fsm: [fsm-disabled, fsm-watchman]
 
     env:
       BUILD_FRAGMENT: bin/Release/netcoreapp3.1
@@ -45,20 +45,20 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         echo "BUILD_PLATFORM=${{ runner.os }}" >>$GITHUB_ENV
-        echo "TRACE2_BASENAME=Trace2.${{ github.run_id }}__${{ github.run_number }}__${{ matrix.os }}__${{ matrix.watchman }}" >>$GITHUB_ENV
+        echo "TRACE2_BASENAME=Trace2.${{ github.run_id }}__${{ github.run_number }}__${{ matrix.os }}__${{ matrix.fsm }}" >>$GITHUB_ENV
 
     - name: Setup platform (Mac)
       if: runner.os == 'macOS'
       run: |
         echo 'BUILD_PLATFORM=Mac' >>$GITHUB_ENV
-        echo "TRACE2_BASENAME=Trace2.${{ github.run_id }}__${{ github.run_number }}__${{ matrix.os }}__${{ matrix.watchman }}" >>$GITHUB_ENV
+        echo "TRACE2_BASENAME=Trace2.${{ github.run_id }}__${{ github.run_number }}__${{ matrix.os }}__${{ matrix.fsm }}" >>$GITHUB_ENV
 
     - name: Setup platform (Windows)
       if: runner.os == 'Windows'
       run: |
         echo "BUILD_PLATFORM=${{ runner.os }}" >>$env:GITHUB_ENV
         echo 'BUILD_FILE_EXT=.exe' >>$env:GITHUB_ENV
-        echo "TRACE2_BASENAME=Trace2.${{ github.run_id }}__${{ github.run_number }}__${{ matrix.os }}__${{ matrix.watchman }}" >>$env:GITHUB_ENV
+        echo "TRACE2_BASENAME=Trace2.${{ github.run_id }}__${{ github.run_number }}__${{ matrix.os }}__${{ matrix.fsm }}" >>$env:GITHUB_ENV
 
     - name: Setup Git installer
       shell: bash
@@ -99,7 +99,7 @@ jobs:
         Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\GitForWindows'
 
     - name: Install Watchman (Linux)
-      if: runner.os == 'Linux' && matrix.watchman
+      if: runner.os == 'Linux' && matrix.fsm == 'fsm-watchman'
       run: |
         cd ..
         git clone https://github.com/facebook/watchman.git -b v4.9.0 --depth 1
@@ -114,11 +114,11 @@ jobs:
         sudo make install
 
     - name: Install Watchman (Mac)
-      if: runner.os == 'macOS' && matrix.watchman
+      if: runner.os == 'macOS' && matrix.fsm == 'fsm-watchman'
       run: brew install watchman
 
     - name: Install Watchman (Windows)
-      if: runner.os == 'Windows' && matrix.watchman
+      if: runner.os == 'Windows' && matrix.fsm == 'fsm-watchman'
       run: |
         Write-Host 'Downloading Watchman ...'
         $Uri = (Select-Xml -Path Directory.Build.props -XPath /Project/PropertyGroup/WatchmanPackageUrl).Node.'#text'
